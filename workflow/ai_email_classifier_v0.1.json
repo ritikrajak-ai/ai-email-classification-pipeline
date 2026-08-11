@@ -1,0 +1,157 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2ed2e83f-07b0-425b-b4bd-c09378657c45",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "20521abb-e293-40d5-af06-39b9eb89d6d1",
+              "name": "email",
+              "value": "My order hasn't arrived yet. Where is it?",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "2e862d47-4b10-4337-8c12-a505a5c30079",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "your api key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\":\"You are a customer email classification system. Classify the customer's intent using only the allowed intent values. Return ONLY a valid JSON object. Do not include markdown, explanations, or additional text. The JSON must contain exactly these fields: intent, confidence, order_id. The intent field must be one of: tracking, refund, return, replacement, cancellation, other. The confidence field must be a number between 0 and 1. The order_id field must be a string containing the order ID, or null if no order ID is present.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"My order ORD-12345 hasn't arrived yet. Can you tell me where my package is?\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        0
+      ],
+      "id": "36d7538c-833e-49c2-b9bb-efa1e5c6698d",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "21fa4c98-c2f0-4823-9da0-6ad0a5caf56a",
+              "name": "ai_output",
+              "value": "={{ $json.choices[0].message.content }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        656,
+        0
+      ],
+      "id": "85e6133f-4000-4e03-81a5-3ec9a7e4b293",
+      "name": "ai output"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const output = JSON.parse($json.ai_output);\n\nreturn {\n  json: output\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        0
+      ],
+      "id": "7ef0c4e7-9950-45fc-9a2c-f59037d61d76",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "ai output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai output": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dfbf669a698c9606795ece00d3016d494501009f9126ffac398bcd8c972c8d17"
+  }
+}
