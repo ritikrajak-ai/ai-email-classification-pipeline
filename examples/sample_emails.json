@@ -1,0 +1,14 @@
+[
+  {
+    "subject": "Where is my order?",
+    "body": "I ordered my product five days ago. Can you tell me where it is?"
+  },
+  {
+    "subject": "I want to return my order",
+    "body": "The product doesn't meet my expectations and I would like to return it."
+  },
+  {
+    "subject": "Refund request",
+    "body": "My order arrived damaged. I would like a refund."
+  }
+]
