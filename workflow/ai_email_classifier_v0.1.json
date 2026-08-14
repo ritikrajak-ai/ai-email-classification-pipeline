@@ -1,40 +1,6 @@
 {
   "nodes": [
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        0,
-        0
-      ],
-      "id": "2ed2e83f-07b0-425b-b4bd-c09378657c45",
-      "name": "When clicking ‘Execute workflow’"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "20521abb-e293-40d5-af06-39b9eb89d6d1",
-              "name": "email",
-              "value": "My order hasn't arrived yet. Where is it?",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.5,
-      "position": [
-        224,
-        0
-      ],
-      "id": "2e862d47-4b10-4337-8c12-a505a5c30079",
-      "name": "Edit Fields"
-    },
-    {
       "parameters": {
         "method": "POST",
         "url": "https://api.groq.com/openai/v1/chat/completions",
@@ -43,7 +9,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "your api key"
+              "value": "your api  key"
             },
             {
               "name": "Content-Type",
@@ -53,14 +19,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\":\"You are a customer email classification system. Classify the customer's intent using only the allowed intent values. Return ONLY a valid JSON object. Do not include markdown, explanations, or additional text. The JSON must contain exactly these fields: intent, confidence, order_id. The intent field must be one of: tracking, refund, return, replacement, cancellation, other. The confidence field must be a number between 0 and 1. The order_id field must be a string containing the order ID, or null if no order ID is present.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"My order ORD-12345 hasn't arrived yet. Can you tell me where my package is?\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\":\"You are a customer email classification system. Classify the customer's intent using only the allowed intent values. Return ONLY a valid JSON object. Do not include markdown, explanations, or additional text. The JSON must contain exactly these fields: intent, confidence, order_id. The intent field must be one of: tracking, refund, return, replacement, cancellation, other. The confidence field must be a number between 0 and 1. The order_id field must be a string containing the order ID, or null if no order ID is present.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.email }}\"\n    }\n  ]\n} ",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        448,
-        0
+        384,
+        64
       ],
       "id": "36d7538c-833e-49c2-b9bb-efa1e5c6698d",
       "name": "HTTP Request"
@@ -73,7 +39,7 @@
               "id": "21fa4c98-c2f0-4823-9da0-6ad0a5caf56a",
               "name": "ai_output",
               "value": "={{ $json.choices[0].message.content }}",
-              "type": "object"
+              "type": "string"
             }
           ]
         },
@@ -82,8 +48,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        656,
-        0
+        608,
+        64
       ],
       "id": "85e6133f-4000-4e03-81a5-3ec9a7e4b293",
       "name": "ai output"
@@ -96,36 +62,258 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        864,
-        0
+        832,
+        64
       ],
       "id": "7ef0c4e7-9950-45fc-9a2c-f59037d61d76",
       "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { intent, confidence, order_id } = $json;\n\nconst allowedIntents = [\n  \"tracking\",\n  \"refund\",\n  \"return\",\n  \"replacement\",\n  \"cancellation\",\n  \"other\"\n];\n\nconst errors = [];\n\n// -------------------------\n// 1. Intent validation\n// -------------------------\n\nif (typeof intent !== \"string\") {\n  errors.push(\"intent must be a string\");\n}\n\nif (!allowedIntents.includes(intent)) {\n  errors.push(\"intent is not an allowed value\");\n}\n\n// -------------------------\n// 2. Confidence validation\n// -------------------------\n\nif (typeof confidence !== \"number\") {\n  errors.push(\"confidence must be a number\");\n} else if (confidence < 0 || confidence > 1) {\n  errors.push(\"confidence must be between 0 and 1\");\n}\n\n// -------------------------\n// 3. Order ID schema validation\n// -------------------------\n\nif (order_id !== null && typeof order_id !== \"string\") {\n  errors.push(\"order_id must be a string or null\");\n}\n\n// -------------------------\n// 4. Order ID business validation\n// -------------------------\n\nif (order_id !== null && typeof order_id === \"string\") {\n  const orderIdPattern = /^ORD-\\d{5}$/;\n\n  if (!orderIdPattern.test(order_id.toUpperCase())) {\n    errors.push(\"order_id has invalid format\");\n  }\n}\n\n// -------------------------\n// 5. Final validation result\n// -------------------------\n\nif (errors.length > 0) {\n  throw new Error(\n    `AI output validation failed: ${errors.join(\", \")}`\n  );\n}\n\n// -------------------------\n// 6. Valid output\n// -------------------------\n\nreturn [{\n  json: {\n    valid: true,\n    intent,\n    confidence,\n    order_id\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        64
+      ],
+      "id": "45796da5-b729-48fa-80c9-a2b263dce87e",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "24d3f340-3304-4e90-affc-1acfa9937f9a",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        64
+      ],
+      "id": "d5224533-bfdf-40d3-a7e7-af9b9abe424c",
+      "name": "Webhook",
+      "webhookId": "24d3f340-3304-4e90-affc-1acfa9937f9a"
+    },
+    {
+      "parameters": {
+        "jsCode": "const testCase = $('test case').first().json;\n\nconst expectedIntent = testCase.expected_intent;\nconst predictedIntent = $json.intent;\n\nconst expectedOrderId = testCase.expected_order_id;\nconst predictedOrderId = $json.order_id;\n\nconst intentCorrect = expectedIntent === predictedIntent;\n\nconst normalizeOrderId = (id) => {\n  if (id === null || id === undefined || id === \"\") {\n    return null;\n  }\n\n  return String(id).trim().toUpperCase();\n};\n\nconst normalizedExpectedOrderId = normalizeOrderId(expectedOrderId);\nconst normalizedPredictedOrderId = normalizeOrderId(predictedOrderId);\n\nconst orderIdCorrect =\n  normalizedExpectedOrderId === normalizedPredictedOrderId;\n\nreturn {\n  json: {\n    ...$json,\n\n    expected_intent: expectedIntent,\n    predicted_intent: predictedIntent,\n\n    expected_order_id: expectedOrderId,\n    predicted_order_id: predictedOrderId,\n\n    intent_correct: intentCorrect,\n    order_id_correct: orderIdCorrect\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        64
+      ],
+      "id": "0cc56098-533c-4e17-9b46-3b3227d47ef2",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "20521abb-e293-40d5-af06-39b9eb89d6d1",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "446ec314-537e-445f-9f3e-14eb07e6e666",
+              "name": "expected_intent",
+              "value": "={{ $json.body.expected_intent }}",
+              "type": "string"
+            },
+            {
+              "id": "daee8d81-a623-4dee-bada-020988e060f9",
+              "name": "id",
+              "value": "={{ $json.body.id }}",
+              "type": "string"
+            },
+            {
+              "id": "9548effc-d852-4096-9868-710433cfd3d7",
+              "name": "difficulty",
+              "value": "={{ $json.body.difficulty }}",
+              "type": "string"
+            },
+            {
+              "id": "3b9e9cb4-c174-4adf-986b-60bc675c8fb2",
+              "name": "expected_order_id",
+              "value": "={{ $json.body.expected_order_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        160,
+        64
+      ],
+      "id": "2e862d47-4b10-4337-8c12-a505a5c30079",
+      "name": "test case"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "20cc1f24-f8a4-4af9-adfc-a091d93fc7d1",
+                    "leftValue": "={{ $json['confidence in words'] }}",
+                    "rightValue": "high",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": " Auto process"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7372cf49-1daf-4349-a95b-3bdae03c7891",
+                    "leftValue": "={{ $json['confidence in words'] }}",
+                    "rightValue": "medium",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Fallback model"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json['confidence in words'] }}",
+                    "rightValue": "low",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "979aa13d-ad59-4a9a-8c8b-95963499cfe7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Review / clarification"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1776,
+        -48
+      ],
+      "id": "74802e15-face-41f7-9c66-7b05f87af050",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9a8747e-e24f-4852-ad32-4a57d2418d77",
+              "name": "confidence in words",
+              "value": "={{   $json.confidence >= 0.90     ? \"high\"     : $json.confidence >= 0.80       ? \"medium\"       : \"low\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1632,
+        32
+      ],
+      "id": "7fed7e97-50e1-4d99-b6ef-f1b22f431548",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"intent\": \"return\",\n  \"confidence\": 0.85,\n  \"order_id\": \"ORD-91010\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1440,
+        80
+      ],
+      "id": "3ef6797a-af7a-498e-b5d8-3b2b7d29a3e3",
+      "name": "fake medium case"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Beareryour api key"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1632,
+        -208
+      ],
+      "id": "07f8eed5-84ab-4b7d-a3cb-57ebcae0de36",
+      "name": "HTTP Request1"
     }
   ],
   "connections": {
-    "When clicking ‘Execute workflow’": {
-      "main": [
-        [
-          {
-            "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Edit Fields": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "HTTP Request": {
       "main": [
         [
@@ -142,6 +330,89 @@
         [
           {
             "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "test case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        []
+      ]
+    },
+    "test case": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fake medium case": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }
